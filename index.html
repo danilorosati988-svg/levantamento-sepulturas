@@ -60,13 +60,13 @@ body{font-family:'DM Sans',sans-serif}.screen{display:none}.screen.active{displa
 <div><label class="text-xs font-medium text-gray-600 uppercase">Tipo</label><select id="f-tipo" class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"><option value="">Selecione</option><option>Gaveta</option><option>Jazigo</option><option>Carneira</option><option>Cova rasa</option><option>Outro</option></select></div>
 <div><label class="text-xs font-medium text-gray-600 uppercase">Conservação</label><select id="f-conservacao" class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"><option value="">Selecione</option><option>Bom</option><option>Regular</option><option>Ruim</option><option>Precário</option></select></div>
 </div>
-<div><label class="text-xs font-medium text-gray-600 uppercase">Nome encontrado na sepultura</label><input id="f-nome" class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"></div>
+<div><label class="text-xs font-medium text-gray-600 uppercase">Nome encontrado na Lápide</label><input id="f-nome" class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"></div>
 
 <div class="flex items-center justify-between border-b border-teal-100 pb-2 mt-6 mb-3"><h2 class="font-bold text-teal-900 text-base">Óbitos e Declarantes</h2><button type="button" onclick="addObitoBlock()" class="px-3 py-1.5 bg-teal-50 text-teal-700 font-semibold rounded-lg text-xs">＋ Adicionar Óbito</button></div>
 <p class="text-xs text-gray-500 mb-3">Cadastre os óbitos vinculados a esta sepultura e os dados dos respectivos declarantes.</p>
 <div id="obitos-container" class="space-y-4"></div>
 
-<h2 class="section-title mt-6">Registro Fotográfico (Máx. 10)</h2><p class="text-xs text-gray-500 -mt-2 mb-2">Formato da ficha: <b>7 × 10 cm (vertical)</b>. A imagem será enquadrada sem deformação.</p>
+<h2 class="section-title mt-6">Registro Fotográfico (Máx. 10)</h2><p class="text-xs text-gray-500 -mt-2 mb-2">Formato da ficha: <b>8 × 10 cm (vertical)</b>. A imagem será enquadrada sem deformação.</p>
 <div class="flex items-center gap-2 flex-wrap"><button type="button" onclick="document.getElementById('file-camera').click()" class="px-4 py-2.5 btn-gradient text-sm flex items-center gap-1">📷 Câmera</button><button type="button" onclick="document.getElementById('file-gallery').click()" class="px-4 py-2.5 btn-outline text-sm flex items-center gap-1">🖼️ Galeria</button><span id="photo-count" class="text-xs text-gray-500 ml-auto font-bold">0/10</span></div>
 <div id="photo-grid" class="flex flex-wrap gap-2 mt-3"></div>
 <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden" multiple onchange="handlePhotoUpload(event)">
@@ -132,7 +132,7 @@ function resetForm(){$('inspection-form').reset();$('f-id').value='';$('obitos-c
 function addObitoBlock(data={}){
 obitoCounter++;let d=document.createElement('div');d.id='obito-'+obitoCounter;d.className='obito-block p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3 relative';
 d.innerHTML=`<div class="flex justify-between items-center"><h3 class="text-xs font-bold uppercase text-teal-800 bg-teal-100 px-3 py-1 rounded-md">Óbito ${obitoCounter}</h3><button type="button" onclick="removeObitoBlock('${d.id}')" class="text-xs font-semibold text-red-600">Remover</button></div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-3"><div><label class="text-xs text-gray-600">Nome do Falecido</label><input class="f-obito-nome w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.nome)}"></div><div><label class="text-xs text-gray-600">Data de Nascimento</label><input type="date" class="f-obito-nasc w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.nascimento)}"></div><div><label class="text-xs text-gray-600">Data de Sepultamento</label><input type="date" class="f-obito-sep w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.sepultamento)}"></div></div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3"><div><label class="text-xs text-gray-600">Nome do Falecido</label><input class="f-obito-nome w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.nome)}"></div><div><label class="text-xs text-gray-600">Livro do Cemitério</label><input class="f-obito-livro w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.livro)}" placeholder="Ex.: Livro 12 / folha 35"></div><div><label class="text-xs text-gray-600">Data de Nascimento</label><input type="date" class="f-obito-nasc w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.nascimento)}"></div><div><label class="text-xs text-gray-600">Data de Sepultamento</label><input type="date" class="f-obito-sep w-full mt-1 px-3 py-2 border rounded-xl text-sm" value="${esc(data.sepultamento)}"></div></div>
 <div class="mt-3 pt-3 border-t space-y-2"><p class="sub-section-title">Declarante do Óbito</p><input placeholder="Nome do Declarante" class="f-decl-nome w-full px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.nome)}"><div class="grid grid-cols-3 gap-2"><input placeholder="Endereço" class="f-decl-end col-span-2 px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.endereco)}"><input placeholder="Número" class="f-decl-num px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.numero)}"></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><input placeholder="CEP" class="f-decl-cep px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.cep)}"><input placeholder="Celular / Tel." class="f-decl-cel px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.celular)}"><input placeholder="E-mail" class="f-decl-email px-3 py-2 border rounded-xl text-sm" value="${esc(data.declarante?.email)}"></div></div>`;
 $('obitos-container').appendChild(d);if(window.lucide)lucide.createIcons()
 }
@@ -141,7 +141,7 @@ function esc(v=''){return String(v).replaceAll('&','&amp;').replaceAll('"','&quo
 function handlePhotoUpload(e){let files=Array.from(e.target.files);if(photosList.length+files.length>10){alert('Limite máximo de 10 fotos.');return}files.forEach(f=>{let r=new FileReader();r.onload=async x=>{const compressed=await compressPhotoDataUrl(x.target.result);photosList.push(compressed);renderPhotoGrid()};r.readAsDataURL(f)});e.target.value=''}
 function renderPhotoGrid(){let g=$('photo-grid');g.innerHTML='';$('photo-count').innerText=photosList.length+'/10';photosList.forEach((src,i)=>{let d=document.createElement('div');d.className='relative w-[70px] h-[100px] rounded-lg overflow-hidden border bg-gray-100';d.innerHTML=`<img src="${src}" class="w-full h-full object-cover"><button type="button" onclick="removePhoto(${i})" class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6">×</button>`;g.appendChild(d)})}
 function removePhoto(i){photosList.splice(i,1);renderPhotoGrid()}
-function collectObitos(){return Array.from(document.querySelectorAll('.obito-block')).map(b=>({nome:b.querySelector('.f-obito-nome').value,nascimento:b.querySelector('.f-obito-nasc').value,sepultamento:b.querySelector('.f-obito-sep').value,declarante:{nome:b.querySelector('.f-decl-nome').value,endereco:b.querySelector('.f-decl-end').value,numero:b.querySelector('.f-decl-num').value,cep:b.querySelector('.f-decl-cep').value,celular:b.querySelector('.f-decl-cel').value,email:b.querySelector('.f-decl-email').value}}))}
+function collectObitos(){return Array.from(document.querySelectorAll('.obito-block')).map(b=>({nome:b.querySelector('.f-obito-nome').value,livro:b.querySelector('.f-obito-livro').value,nascimento:b.querySelector('.f-obito-nasc').value,sepultamento:b.querySelector('.f-obito-sep').value,declarante:{nome:b.querySelector('.f-decl-nome').value,endereco:b.querySelector('.f-decl-end').value,numero:b.querySelector('.f-decl-num').value,cep:b.querySelector('.f-decl-cep').value,celular:b.querySelector('.f-decl-cel').value,email:b.querySelector('.f-decl-email').value}}))}
 $('inspection-form').addEventListener('submit',e=>{
 e.preventDefault();
 try{
@@ -182,12 +182,13 @@ function printInspection(id){
  if(!x){alert('Vistoria não encontrada.');return}
  const escp=v=>esc(v??'-');
  const fmtDate=v=>v?new Date(v+'T00:00:00').toLocaleDateString('pt-BR'):'-';
- const photos=(x.fotos||[]).map((p,i)=>`<div class="photo"><div class="photo-label">Foto ${i+1}</div><img src="${p}" alt="Foto ${i+1}"></div>`).join('');
+ const photos=x.fotos||[];
  const obitos=(x.obitos||[]).map((o,i)=>`
    <div class="obito">
     <h3>Óbito ${i+1}</h3>
     <div class="grid">
       <div><b>Falecido:</b> ${escp(o.nome)}</div>
+      <div><b>Livro do Cemitério:</b> ${escp(o.livro)}</div>
       <div><b>Nascimento:</b> ${fmtDate(o.nascimento)}</div>
       <div><b>Sepultamento:</b> ${fmtDate(o.sepultamento)}</div>
     </div>
@@ -195,71 +196,43 @@ function printInspection(id){
     <b>Endereço:</b> ${escp(o.declarante?.endereco)} ${escp(o.declarante?.numero)}<br>
     <b>CEP:</b> ${escp(o.declarante?.cep)} &nbsp; <b>Telefone:</b> ${escp(o.declarante?.celular)} &nbsp; <b>E-mail:</b> ${escp(o.declarante?.email)}</div>
    </div>`).join('');
+ const backPhotos=photos.map((p,i)=>`<div class="photo"><div class="photo-label">Foto ${i+1}</div><img src="${p}" alt="Foto ${i+1}"></div>`).join('');
  const w=window.open('','_blank','width=1000,height=800');
  if(!w){alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema.');return}
  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Vistoria ${escp(x.quadra)}-${escp(x.sepultura)}</title>
  <style>
- *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0;padding:25px;font-size:12px}
- h1{font-size:20px;margin:0 0 4px;color:#115e59}h2{font-size:15px;color:#115e59;border-bottom:2px solid #ccfbf1;padding-bottom:5px;margin:20px 0 10px}
- h3{font-size:12px;color:#115e59;margin:0 0 8px}.header{border-bottom:3px solid #0f766e;padding-bottom:12px;margin-bottom:15px}
- .subtitle{color:#6b7280}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
- .field{background:#f8fafc;border:1px solid #e5e7eb;border-radius:7px;padding:8px}.obito{border:1px solid #d1d5db;border-radius:9px;padding:10px;margin:10px 0;page-break-inside:avoid}
- .decl{margin-top:8px;background:#f0fdfa;padding:8px;border-radius:7px}.status{display:inline-block;padding:5px 10px;border-radius:15px;background:#fef3c7}
- .photos{display:flex;flex-wrap:wrap;gap:12px}.photo{width:70mm;page-break-inside:avoid}.photo img{width:70mm;height:100mm;object-fit:cover;border:1px solid #bbb;border-radius:6px;display:block}.photo-label{font-weight:bold;margin-bottom:4px;break-after:avoid}.photo img{object-fit:cover;object-position:center}
- .obs{white-space:pre-wrap;border:1px solid #e5e7eb;border-radius:7px;padding:10px;min-height:50px}.footer{margin-top:25px;border-top:1px solid #ddd;padding-top:8px;color:#6b7280;font-size:10px}
- @media print{body{padding:12mm}.no-print{display:none}.photos{gap:8px}.photo{width:175px}.photo img{width:175px;height:130px}}
- @page{size:A4 portrait;margin:10mm}@media print{body{padding:0}.photo img{object-fit:contain!important;background:#fff}.no-print{display:none!important}}</style></head><body>
- <div class="header"><h1>Sistema de Levantamento de Sepulturas</h1><div class="subtitle">Ficha de Vistoria de Sepultura</div></div>
+ *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0;padding:0;font-size:12px}
+ .page{width:210mm;min-height:297mm;padding:12mm;page-break-after:always;position:relative}.page:last-child{page-break-after:auto}
+ h1{font-size:20px;margin:0 0 4px;color:#115e59}h2{font-size:15px;color:#115e59;border-bottom:2px solid #ccfbf1;padding-bottom:5px;margin:18px 0 10px}
+ h3{font-size:12px;color:#115e59;margin:0 0 8px}.header{border-bottom:3px solid #0f766e;padding-bottom:12px;margin-bottom:15px}.subtitle{color:#6b7280}
+ .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.field{background:#f8fafc;border:1px solid #e5e7eb;border-radius:7px;padding:8px}
+ .obito{border:1px solid #d1d5db;border-radius:9px;padding:10px;margin:10px 0;page-break-inside:avoid}.decl{margin-top:8px;background:#f0fdfa;padding:8px;border-radius:7px}
+ .status{display:inline-block;padding:5px 10px;border-radius:15px;background:#fef3c7}.obs{white-space:pre-wrap;border:1px solid #e5e7eb;border-radius:7px;padding:10px;min-height:50px}
+ .footer{position:absolute;bottom:10mm;left:12mm;right:12mm;border-top:1px solid #ddd;padding-top:8px;color:#6b7280;font-size:10px}
+ .back{display:flex;flex-direction:column;align-items:center}.back-title{font-size:18px;font-weight:bold;color:#115e59;margin-bottom:12mm;align-self:stretch;border-bottom:3px solid #0f766e;padding-bottom:8px}
+ .photos{display:flex;flex-direction:column;align-items:center;gap:8mm;width:100%}.photo{width:80mm;height:100mm;page-break-inside:avoid;text-align:center}.photo img{display:block;width:80mm;height:100mm;object-fit:contain;border:1px solid #aaa;background:#fff}.photo-label{font-weight:bold;margin-bottom:3mm}
+ .no-photo{margin-top:30mm;color:#6b7280}.no-print{display:none}
+ @page{size:A4 portrait;margin:0}@media print{.page{box-shadow:none}}
+ </style></head><body>
+ <section class="page">
+ <div class="header"><h1>Sistema de Levantamento de Sepulturas</h1><div class="subtitle">Ficha de Vistoria de Sepultura — Frente</div></div>
  <h2>Identificação da Sepultura</h2><div class="grid">
  <div class="field"><b>Cemitério</b><br>${escp(x.cemiterio)}</div><div class="field"><b>Quadra</b><br>${escp(x.quadra)}</div><div class="field"><b>Sepultura</b><br>${escp(x.sepultura)}</div>
- <div class="field"><b>Tipo</b><br>${escp(x.tipo)}</div><div class="field"><b>Conservação</b><br>${escp(x.conservacao)}</div><div class="field"><b>Nome encontrado</b><br>${escp(x.nome)}</div>
+ <div class="field"><b>Tipo</b><br>${escp(x.tipo)}</div><div class="field"><b>Conservação</b><br>${escp(x.conservacao)}</div><div class="field"><b>Nome encontrado na Lápide</b><br>${escp(x.nome)}</div>
  </div>
  <h2>Óbitos e Declarantes</h2>${obitos||'<p>Nenhum óbito cadastrado.</p>'}
  <h2>Observações e Status</h2><div class="grid"><div class="field"><b>Servidor responsável</b><br>${escp(x.servidor)}</div><div class="field"><b>Status</b><br><span class="status">${escp(x.status)}</span></div><div class="field"><b>Data do cadastro</b><br>${x.dataCadastro?new Date(x.dataCadastro).toLocaleString('pt-BR'):'-'}</div></div>
  <div class="obs" style="margin-top:8px">${escp(x.observacoes)}</div>
- <h2>Registro Fotográfico (${(x.fotos||[]).length})</h2><div class="photos">${photos||'<p>Nenhuma foto registrada.</p>'}</div>
- <div class="footer">Documento gerado pelo Sistema de Levantamento de Sepulturas. Para gerar o PDF, selecione "Salvar como PDF" na janela de impressão.</div>
- <div class="no-print" style="margin-top:20px"><button onclick="window.print()" style="padding:10px 18px;border:0;border-radius:8px;background:#0f766e;color:white;font-weight:bold">🖨 Imprimir / Salvar em PDF</button></div>
- <script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}<\/script>
-<script>
-(function(){
-  function nativeAvailable(){ return !!window.NativeStorage; }
-  window.nativeChooseFolder=function(){
-    if(nativeAvailable()) NativeStorage.chooseFolder();
-    else alert('Esta função de armazenamento direto está disponível na versão APK.');
-  };
-  window.nativeSyncCurrentData=function(){
-    if(!nativeAvailable()) return;
-    try{
-      const data=typeof getStorage==='function'?getStorage():[];
-      NativeStorage.saveDatabase(JSON.stringify(data));
-    }catch(e){ console.error(e); }
-  };
-  window.onNativeFolderSelected=function(path){
-    const el=document.getElementById('storage-status');
-    if(el) el.textContent='Pasta do aplicativo: '+path;
-  };
-  window.onNativeStorageSaved=function(ok,msg){
-    if(ok){
-      const el=document.getElementById('storage-status');
-      if(el) el.textContent='Dados gravados no armazenamento do Android.';
-    } else {
-      alert(msg||'Não foi possível gravar os dados no armazenamento.');
-    }
-  };
-  window.onNativeDataLoaded=function(json){
-    try{
-      const nativeData=JSON.parse(json||'[]');
-      if(Array.isArray(nativeData)){
-        localStorage.setItem('vistorias_sepulturas_db', JSON.stringify(nativeData));
-        if(typeof updateHomeCount==='function') updateHomeCount();
-      }
-    }catch(e){console.error(e);}
-  };
-})();
-<\/script>
-</body></html>`);
+ <div class="footer">Página 1 — Informações da vistoria. A página 2 contém o registro fotográfico.</div>
+ </section>
+ <section class="page back">
+   <div class="back-title">Registro Fotográfico — Verso da Ficha</div>
+   <div class="photos">${backPhotos||'<div class="no-photo">Nenhuma foto foi anexada a esta vistoria.</div>'}</div>
+   <div class="footer">Página 2 — Foto(s) do registro da sepultura. Cada foto ocupa aproximadamente meia folha A4.</div>
+ </section>
+ </body></html>`);
  w.document.close();
+ setTimeout(()=>w.print(),500);
 }
 
 function renderReports(){let d=getStorage(),reg=d.filter(x=>x.status==='Regular').length,agu=d.filter(x=>x.status==='Aguardando documentação').length,irr=d.filter(x=>x.status==='Irregular').length,ob=d.reduce((n,x)=>n+(x.obitos?.length||0),0),fo=d.reduce((n,x)=>n+(x.fotos?.length||0),0);$('reports-summary').innerHTML=`<div class="grid grid-cols-2 gap-3">${[['Vistorias',d.length],['Óbitos',ob],['Fotos',fo],['Irregulares',irr],['Aguardando documentação',agu],['Regulares',reg]].map(a=>`<div class="p-4 bg-gray-50 rounded-2xl"><div class="text-2xl font-bold text-teal-800">${a[1]}</div><div class="text-xs text-gray-600 mt-1">${a[0]}</div></div>`).join('')}</div>`}
