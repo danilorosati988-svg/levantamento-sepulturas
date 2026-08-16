@@ -50,6 +50,10 @@ body{font-family:'DM Sans',sans-serif}.screen{display:none}.screen.active{displa
 <div id="screen-form" class="screen">
 <form id="inspection-form" class="space-y-4 card-modern p-5">
 <input type="hidden" id="f-id">
+<div class="flex items-center justify-between gap-3 border-b border-teal-100 pb-3 mb-2">
+  <h1 class="font-bold text-teal-900 text-lg">Sistema de Levantamento de Sepulturas</h1>
+  <div class="header-status"><label for="f-status">Status:</label><select id="f-status" class="px-2 py-1 border rounded-lg text-sm"><option>Regular</option><option>Irregular</option></select></div>
+</div>
 <h2 class="section-title">Dados da Sepultura</h2>
 <div class="grid grid-cols-2 gap-3">
 <div><label class="text-xs font-medium text-gray-600 uppercase">Quadra *</label><input id="f-quadra" required class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"></div>
@@ -77,14 +81,10 @@ body{font-family:'DM Sans',sans-serif}.screen{display:none}.screen.active{displa
 <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden" multiple onchange="handlePhotoUpload(event)">
 <input type="file" id="file-gallery" accept="image/*" class="hidden" multiple onchange="handlePhotoUpload(event)">
 
-<h2 class="section-title mt-6">Observações e Status</h2>
+<h2 class="section-title mt-6">Observações</h2>
 <div><label class="text-xs font-medium text-gray-600 uppercase">Observações</label><textarea id="f-obs" rows="3" class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"></textarea></div>
-<div><label class="text-xs font-medium text-gray-600 uppercase">Servidor responsável *</label><input id="f-servidor" required class="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl outline-none text-sm"></div>
-<div><label class="text-xs font-medium text-gray-600 uppercase block mb-2">Status *</label><div class="flex flex-wrap gap-2">
-<label><input type="radio" name="status" value="Regular" class="mr-1">Regular</label>
-<label><input type="radio" name="status" value="Aguardando documentação" class="mr-1" checked>Aguardando documentação</label>
-<label><input type="radio" name="status" value="Irregular" class="mr-1">Irregular</label>
-</div></div>
+
+
 <div class="grid grid-cols-2 gap-2 mt-6"><button type="button" onclick="goHome()" class="py-3 btn-outline text-sm">Cancelar</button><button type="submit" class="py-3 btn-gradient text-sm">Salvar Vistoria</button></div>
 </form></div>
 
@@ -133,7 +133,7 @@ window.onload=()=>{if(window.lucide)lucide.createIcons();updateHomeCount()};
 function showScreen(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$('screen-'+id).classList.add('active');$('btn-back').classList.toggle('hidden',id==='home');if(id==='search')renderSearchList();if(id==='reports')renderReports();if(window.lucide)lucide.createIcons()}
 function goHome(){showScreen('home')}
 function newInspection(){resetForm();showScreen('form');addObitoBlock()}
-function resetForm(){$('inspection-form').reset();$('f-id').value='';$('obitos-container').innerHTML='';obitoCounter=0;photosList=[];setNomesLapide([]);renderPhotoGrid()}
+function resetForm(){$('inspection-form').reset();$('f-id').value='';if($('f-status'))$('f-status').value='Regular';$('obitos-container').innerHTML='';obitoCounter=0;photosList=[];setNomesLapide([]);renderPhotoGrid()}
 function addNomeLapide(value=''){
  const c=$('nomes-lapide-container');
  const row=document.createElement('div');
@@ -206,15 +206,15 @@ function collectObitos(){return Array.from(document.querySelectorAll('.obito-blo
 $('inspection-form').addEventListener('submit',e=>{
 e.preventDefault();
 try{
-const quadra=$('f-quadra').value.trim(), sep=$('f-sepultura').value.trim(), cem=$('f-cemiterio').value.trim(), servidor=$('f-servidor').value.trim();
-if(!quadra||!sep||!cem||!servidor){alert('Preencha todos os campos obrigatórios (*).');return}
+const quadra=$('f-quadra').value.trim(), sep=$('f-sepultura').value.trim(), cem=$('f-cemiterio').value.trim(), servidor='';
+if(!quadra||!sep||!cem){alert('Preencha todos os campos obrigatórios (*).');return}
 const data=getStorage();
 const id=$('f-id').value||('VST-'+Date.now()+'-'+Math.random().toString(36).slice(2,8));
 const item={
  id,quadra,sepultura:sep,cemiterio:cem,tipo:$('f-tipo').value,conservacao:$('f-conservacao').value,
  nome:collectNomesLapide()[0]||'',nomesLapide:collectNomesLapide(),obitos:collectObitos(),fotos:[...photosList],
  observacoes:$('f-obs').value.trim(),servidor,
- status:document.querySelector('input[name=status]:checked')?.value||'Aguardando documentação',
+ status:$('f-status').value||'Regular',
  dataAtualizacao:new Date().toISOString()
 };
 const idx=data.findIndex(x=>x.id===id);
@@ -234,7 +234,7 @@ goHome();
 function statusBadge(s){return s==='Regular'?'badge-green':s==='Irregular'?'badge-red':'badge-yellow'}
 function renderSearchList(){let q=($('search-input').value||'').toLowerCase();let data=getStorage().filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('search-results').innerHTML=data.length?data.map(card).join(''):'<p class="text-sm text-gray-500 text-center py-6">Nenhum registro encontrado.</p>'}
 function card(x){let fal=x.obitos?.map(o=>o.nome).filter(Boolean).join(', ')||x.nome||'Sem nome';return `<div class="border rounded-2xl p-4 bg-white"><div class="flex justify-between gap-2"><div><b>${esc(x.cemiterio)}</b><div class="text-sm text-gray-600">Quadra ${esc(x.quadra)} • Sepultura ${esc(x.sepultura)}</div><div class="text-sm mt-2">${esc(fal)}</div></div><span class="badge ${statusBadge(x.status)}">${esc(x.status)}</span></div><div class="flex gap-2 mt-3"><button onclick="editInspection('${x.id}')" class="px-3 py-2 btn-outline text-xs">Editar</button><button onclick="viewInspection('${x.id}')" class="px-3 py-2 bg-gray-100 rounded-xl text-xs font-semibold">Ver</button><button onclick="printInspection('${x.id}')" class="px-3 py-2 bg-teal-50 text-teal-800 rounded-xl text-xs font-semibold">🖨 PDF</button><button onclick="deleteInspection('${x.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-xs font-semibold">Excluir</button></div></div>`}
-function editInspection(id){let x=getStorage().find(a=>a.id===id);if(!x)return;resetForm();$('f-id').value=x.id;$('f-quadra').value=x.quadra;$('f-sepultura').value=x.sepultura;$('f-cemiterio').value=x.cemiterio;$('f-tipo').value=x.tipo;$('f-conservacao').value=x.conservacao;setNomesLapide(x.nomesLapide||[x.nome||'']);$('f-obs').value=x.observacoes;$('f-servidor').value=x.servidor;document.querySelectorAll('input[name=status]').forEach(r=>r.checked=r.value===x.status);(x.obitos?.length?x.obitos:[{}]).forEach(addObitoBlock);photosList=x.fotos||[];renderPhotoGrid();showScreen('form')}
+function editInspection(id){let x=getStorage().find(a=>a.id===id);if(!x)return;resetForm();$('f-id').value=x.id;$('f-quadra').value=x.quadra;$('f-sepultura').value=x.sepultura;$('f-cemiterio').value=x.cemiterio;$('f-tipo').value=x.tipo;$('f-conservacao').value=x.conservacao;setNomesLapide(x.nomesLapide||[x.nome||'']);$('f-obs').value=x.observacoes;if($('f-status'))$('f-status').value=x.status||'Regular';document.querySelectorAll('input[name=status]').forEach(r=>r.checked=r.value===x.status);(x.obitos?.length?x.obitos:[{}]).forEach(addObitoBlock);photosList=x.fotos||[];renderPhotoGrid();showScreen('form')}
 function deleteInspection(id){if(!confirm('Excluir esta vistoria permanentemente?'))return;saveStorage(getStorage().filter(x=>x.id!==id));renderSearchList();renderReports()}
 function viewInspection(id){let x=getStorage().find(a=>a.id===id);if(!x)return;let fal=x.obitos?.map(o=>`• ${esc(o.nome||'Não informado')} — sepultamento: ${esc(o.sepultamento||'Não informado')} — declarante: ${esc(o.declarante?.nome||'Não informado')}`).join('<br>')||'Nenhum';let fotos=(x.fotos||[]).map(p=>`<img src="${p}" class="w-20 h-20 object-cover rounded-lg">`).join('');let nomes=(x.nomesLapide?.length?x.nomesLapide:[x.nome||'-']).map(n=>esc(n)).join('<br>');$('search-results').innerHTML=`<div class="border rounded-2xl p-4"><h3 class="font-bold text-teal-900 text-lg">${esc(x.cemiterio)} — Quadra ${esc(x.quadra)} / Sepultura ${esc(x.sepultura)}</h3><p class="text-sm mt-2"><b>Status:</b> ${esc(x.status)}<br><b>Tipo:</b> ${esc(x.tipo||'-')}<br><b>Conservação:</b> ${esc(x.conservacao||'-')}<br><b>Servidor:</b> ${esc(x.servidor)}</p><hr class="my-3"><b>Óbitos</b><p class="text-sm mt-2">${fal}</p><p class="text-sm mt-3"><b>Observações:</b> ${esc(x.observacoes||'-')}</p><div class="flex flex-wrap gap-2 mt-3">${fotos}</div><div class="flex flex-wrap gap-2 mt-4"><button onclick="printInspection('${x.id}')" class="px-4 py-2 btn-gradient text-sm">🖨 Imprimir / Salvar PDF</button><button onclick="renderSearchList()" class="px-4 py-2 btn-outline text-sm">Voltar aos resultados</button></div></div>`}
 
@@ -263,30 +263,29 @@ function printInspection(id){
  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Vistoria ${escp(x.quadra)}-${escp(x.sepultura)}</title>
  <style>
  *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2937;margin:0;padding:0;font-size:12px}
- .page{width:210mm;min-height:297mm;padding:12mm;page-break-after:always;position:relative}.page:last-child{page-break-after:auto}
- h1{font-size:20px;margin:0 0 4px;color:#115e59}h2{font-size:15px;color:#115e59;border-bottom:2px solid #ccfbf1;padding-bottom:5px;margin:18px 0 10px}
- h3{font-size:12px;color:#115e59;margin:0 0 8px}.header{border-bottom:3px solid #0f766e;padding-bottom:12px;margin-bottom:15px}.subtitle{color:#6b7280}
+ .page{width:210mm;height:297mm;min-height:297mm;padding:8mm 10mm;page-break-after:always;position:relative;overflow:hidden}.page:last-child{page-break-after:auto}.page.photo-page{page-break-before:always;page-break-after:auto;display:flex;flex-direction:column;overflow:hidden;height:297mm;min-height:297mm} .photo-page .photos{display:grid;grid-template-columns:repeat(2,105mm);grid-auto-rows:150mm;gap:8mm;justify-content:center;align-content:start;overflow:hidden}.photo-page .photo{width:105mm;height:150mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}.photo-page .photo img{width:105mm;height:150mm;object-fit:contain;display:block;background:#fff}
+ h1{font-size:20px;margin:0 0 4px;color:#115e59}.header-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#115e59;white-space:nowrap}.header-status select{font-weight:600}h2{font-size:15px;color:#115e59;border-bottom:2px solid #ccfbf1;padding-bottom:5px;margin:18px 0 10px}
+ h3{font-size:12px;color:#115e59;margin:0 0 8px}.header-title{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:6mm;width:100%;white-space:nowrap}.pdf-status{font-size:12px;display:inline-flex;align-items:center;border:1px solid #0f766e;border-radius:6px;padding:2mm 3mm;color:#115e59;white-space:nowrap}.header{border-bottom:3px solid #0f766e;padding-bottom:12px;margin-bottom:15px}.subtitle{color:#6b7280}
  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.field{background:#f8fafc;border:1px solid #e5e7eb;border-radius:7px;padding:8px}
  .obito{border:1px solid #d1d5db;border-radius:9px;padding:10px;margin:10px 0;page-break-inside:avoid}.decl{margin-top:8px;background:#f0fdfa;padding:8px;border-radius:7px}.line{margin:5px 0}.line.two,.line.three,.decl .two{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.line.three{grid-template-columns:1.5fr 1fr 1fr}.decl{margin-top:8px;background:#f0fdfa;padding:8px;border-radius:7px;line-height:1.6}
  .status{display:inline-block;padding:5px 10px;border-radius:15px;background:#fef3c7}.obs{white-space:pre-wrap;border:1px solid #e5e7eb;border-radius:7px;padding:10px;min-height:50px}
  .footer{position:absolute;bottom:10mm;left:12mm;right:12mm;border-top:1px solid #ddd;padding-top:8px;color:#6b7280;font-size:10px}
  .back{display:flex;flex-direction:column;align-items:center}.back-title{font-size:18px;font-weight:bold;color:#115e59;margin-bottom:12mm;align-self:stretch;border-bottom:3px solid #0f766e;padding-bottom:8px}
- .photos{display:flex;flex-direction:column;align-items:center;gap:8mm;width:100%}.photo{width:80mm;height:100mm;page-break-inside:avoid;text-align:center}.photo img{display:block;width:80mm;height:100mm;object-fit:contain;border:1px solid #aaa;background:#fff}.photo-label{font-weight:bold;margin-bottom:3mm}
+ .photos{display:flex;flex-direction:column;align-items:center;gap:8mm;width:100%}.photo{width:105mm;height:150mm;page-break-inside:avoid;text-align:center}.photo img{display:block;width:105mm;height:150mm;object-fit:contain;border:1px solid #aaa;background:#fff}.photo-label{font-weight:bold;margin-bottom:3mm}
  .no-photo{margin-top:30mm;color:#6b7280}.no-print{display:none}
  @page{size:A4 portrait;margin:0}@media print{.page{box-shadow:none}}
  </style></head><body>
  <section class="page">
- <div class="header"><h1>Sistema de Levantamento de Sepulturas</h1><div class="subtitle">Ficha de Vistoria de Sepultura — Frente</div></div>
+ <div class="header"><div class="header-title"><h1>Sistema de Levantamento de Sepulturas</h1><div class="pdf-status"><b>Status:</b>&nbsp; ${escp(x.status||"Regular")}</div></div><div class="subtitle">Ficha de Vistoria de Sepultura — Frente</div></div>
  <h2>Identificação da Sepultura</h2><div class="grid">
  <div class="field"><b>Cemitério</b><br>${escp(x.cemiterio)}</div><div class="field"><b>Quadra</b><br>${escp(x.quadra)}</div><div class="field"><b>Sepultura</b><br>${escp(x.sepultura)}</div>
  <div class="field"><b>Tipo</b><br>${escp(x.tipo)}</div><div class="field"><b>Conservação</b><br>${escp(x.conservacao)}</div><div class="field"><b>Nomes encontrados na Lápide</b><br>${(x.nomesLapide?.length?x.nomesLapide:[x.nome||'-']).map(n=>escp(n)).join('<br>')}</div>
  </div>
  <h2>Óbitos e Declarantes</h2>${obitos||'<p>Nenhum óbito cadastrado.</p>'}
- <h2>Observações e Status</h2><div class="grid"><div class="field"><b>Servidor responsável</b><br>${escp(x.servidor)}</div><div class="field"><b>Status</b><br><span class="status">${escp(x.status)}</span></div><div class="field"><b>Data do cadastro</b><br>${x.dataCadastro?new Date(x.dataCadastro).toLocaleString('pt-BR'):'-'}</div></div>
- <div class="obs" style="margin-top:8px">${escp(x.observacoes)}</div>
+ <h2>Observações</h2><div class="obs" style="margin-top:8px">${escp(x.observacoes)}</div>
  <div class="footer">Página 1 — Informações da vistoria. A página 2 contém o registro fotográfico.</div>
  </section>
- <section class="page back">
+ <section class="page photo-page">
    <div class="back-title">Registro Fotográfico — Verso da Ficha</div>
    <div class="photos">${backPhotos||'<div class="no-photo">Nenhuma foto foi anexada a esta vistoria.</div>'}</div>
    <div class="footer">Página 2 — Foto(s) do registro da sepultura. Cada foto ocupa aproximadamente meia folha A4.</div>
@@ -296,7 +295,7 @@ function printInspection(id){
  setTimeout(()=>w.print(),500);
 }
 
-function renderReports(){let d=getStorage(),reg=d.filter(x=>x.status==='Regular').length,agu=d.filter(x=>x.status==='Aguardando documentação').length,irr=d.filter(x=>x.status==='Irregular').length,ob=d.reduce((n,x)=>n+(x.obitos?.length||0),0),fo=d.reduce((n,x)=>n+(x.fotos?.length||0),0);$('reports-summary').innerHTML=`<div class="grid grid-cols-2 gap-3">${[['Vistorias',d.length],['Óbitos',ob],['Fotos',fo],['Irregulares',irr],['Aguardando documentação',agu],['Regulares',reg]].map(a=>`<div class="p-4 bg-gray-50 rounded-2xl"><div class="text-2xl font-bold text-teal-800">${a[1]}</div><div class="text-xs text-gray-600 mt-1">${a[0]}</div></div>`).join('')}</div>`}
+function renderReports(){let d=getStorage(),reg=d.filter(x=>x.status==='Regular').length,agu=d.filter(x=>x.status==='Regular').length,irr=d.filter(x=>x.status==='Irregular').length,ob=d.reduce((n,x)=>n+(x.obitos?.length||0),0),fo=d.reduce((n,x)=>n+(x.fotos?.length||0),0);$('reports-summary').innerHTML=`<div class="grid grid-cols-2 gap-3">${[['Vistorias',d.length],['Óbitos',ob],['Fotos',fo],['Irregulares',irr],['Regular',agu],['Regulares',reg]].map(a=>`<div class="p-4 bg-gray-50 rounded-2xl"><div class="text-2xl font-bold text-teal-800">${a[1]}</div><div class="text-xs text-gray-600 mt-1">${a[0]}</div></div>`).join('')}</div>`}
 
 let storageRootHandle = null;
 
