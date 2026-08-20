@@ -130,10 +130,89 @@ body{font-family:'DM Sans',sans-serif}.screen{display:none}.screen.active{displa
 <script>
 const STORAGE_KEY='vistorias_sepulturas_db';let photosList=[];let obitoCounter=0;
 const $=id=>document.getElementById(id);
+
+const LARGE_DB_NAME='LevantamentoSepulturasStorage';
+const LARGE_DB_VERSION=1;
+let largeDbPromise=null;
+function openLargeDB(){
+ if(largeDbPromise)return largeDbPromise;
+ largeDbPromise=new Promise((resolve,reject)=>{
+  const req=indexedDB.open(LARGE_DB_NAME,LARGE_DB_VERSION);
+  req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('photos'))db.createObjectStore('photos',{keyPath:'id'});};
+  req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+ });
+ return largeDbPromise;
+}
+async function idbGetPhotos(id){
+ const db=await openLargeDB();
+ return new Promise((resolve,reject)=>{
+  const r=db.transaction('photos','readonly').objectStore('photos').get(id);
+  r.onsuccess=()=>resolve(r.result?.photos||[]);
+  r.onerror=()=>reject(r.error);
+ });
+}
+async function idbSavePhotos(id,photos){
+ const db=await openLargeDB();
+ return new Promise((resolve,reject)=>{
+  const r=db.transaction('photos','readwrite').objectStore('photos').put({id,photos:photos||[]});
+  r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error);
+ });
+}
+async function idbDeletePhotos(id){
+ const db=await openLargeDB();
+ return new Promise((resolve,reject)=>{
+  const r=db.transaction('photos','readwrite').objectStore('photos').delete(id);
+  r.onsuccess=()=>resolve(); r.onerror=()=>reject(r.error);
+ });
+}
+function metadataOnly(x){
+ const y={...x};
+ delete y.fotos;
+ y.photoCount=Number.isFinite(x.photoCount)?x.photoCount:(x.fotos?.length||0);
+ return y;
+}
+async function saveLargeRecord(item){
+ await idbSavePhotos(item.id,item.fotos||[]);
+ const meta=metadataOnly(item);
+ const data=getStorage();
+ const idx=data.findIndex(x=>x.id===item.id);
+ if(idx>=0){meta.dataCadastro=data[idx].dataCadastro||meta.dataAtualizacao;data[idx]=meta}
+ else{meta.dataCadastro=meta.dataAtualizacao;data.push(meta)}
+ saveStorage(data);
+}
+async function migratePhotosToIndexedDB(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(!raw)return;
+  const data=JSON.parse(raw);
+  if(!Array.isArray(data))return;
+  let changed=false;
+  for(const x of data){
+   if(Array.isArray(x.fotos) && x.fotos.length){
+    await idbSavePhotos(x.id,x.fotos);
+    x.photoCount=x.fotos.length;
+    delete x.fotos;
+    changed=true;
+   }
+  }
+  if(changed){
+   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
+   catch(e){
+    // If quota is already tight, save only metadata without images.
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data.map(metadataOnly)));
+   }
+  }
+ }catch(e){console.error('Migração de fotos:',e)}
+}
+async function getRecordWithPhotos(id){
+ const x=getStorage().find(a=>a.id===id);
+ if(!x)return null;
+ return {...x,fotos:await idbGetPhotos(id)};
+}
 function getStorage(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){return[]}}
 function saveStorage(d){localStorage.setItem(STORAGE_KEY,JSON.stringify(d));updateHomeCount()}
 function updateHomeCount(){$('home-count').innerText=`Total de vistorias registradas: ${getStorage().length}`}
-window.onload=()=>{if(window.lucide)lucide.createIcons();updateHomeCount()};
+window.onload=async()=>{try{await openLargeDB();await migratePhotosToIndexedDB()}catch(e){console.error(e)}if(window.lucide)lucide.createIcons();updateHomeCount()};
 function showScreen(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$('screen-'+id).classList.add('active');$('btn-back').classList.toggle('hidden',id==='home');if(id==='search')renderSearchList();if(id==='reports')renderReports();if(window.lucide)lucide.createIcons()}
 function goHome(){showScreen('home')}
 function newInspection(){resetForm();showScreen('form');addObitoBlock()}
@@ -207,7 +286,7 @@ function renderPhotoGrid(){let g=$('photo-grid');g.innerHTML='';$('photo-count')
 function removePhoto(i){photosList.splice(i,1);renderPhotoGrid()}
 function collectObitos(){return Array.from(document.querySelectorAll('.obito-block')).map(b=>({nome:b.querySelector('.f-obito-nome').value,livro:b.querySelector('.f-obito-livro').value,pagina:b.querySelector('.f-obito-pagina').value,cemiterioLivro:b.querySelector('.f-obito-cemiterio').value,nascimento:b.querySelector('.f-obito-nasc').value,sepultamento:b.querySelector('.f-obito-sep').value,declarante:{nome:b.querySelector('.f-decl-nome').value,endereco:b.querySelector('.f-decl-end').value,numero:b.querySelector('.f-decl-num').value,cep:b.querySelector('.f-decl-cep').value,celular:b.querySelector('.f-decl-cel').value,email:b.querySelector('.f-decl-email').value}}))}
 
-$('inspection-form').addEventListener('submit',e=>{
+$('inspection-form').addEventListener('submit',async e=>{
 e.preventDefault();
 try{
 const quadra=$('f-quadra').value.trim(), lote=$('f-lote').value.trim(), cem=$('f-cemiterio').value.trim(), servidor='';
@@ -218,36 +297,49 @@ const item={
  id,quadra,lote:lote,cemiterio:cem,tipo:$('f-tipo').value,conservacao:$('f-conservacao').value,
  nome:collectNomesLapide()[0]||'',nomesLapide:collectNomesLapide(),obitos:collectObitos(),fotos:[...photosList],
  observacoes:$('f-obs').value.trim(),responsavelVistoria:$('f-responsavel-vistoria').value.trim(),rgfVistoria:$('f-rgf-vistoria').value.trim(),dataVistoria:$('f-data-vistoria').value,servidor,
- status:$('f-status').value||'Regular',
- dataAtualizacao:new Date().toISOString()
+ status:$('f-status').value||'Regular',dataAtualizacao:new Date().toISOString()
 };
-const idx=data.findIndex(x=>x.id===id);
-if(idx>=0){item.dataCadastro=data[idx].dataCadastro||item.dataAtualizacao;data[idx]=item}
-else{item.dataCadastro=item.dataAtualizacao;data.push(item)}
-try{saveStorage(data)}
-catch(err){
- alert('Não foi possível salvar. O navegador pode ter atingido o limite de armazenamento, principalmente por causa das fotos. Tente reduzir a quantidade/tamanho das fotos.');
- console.error(err);return;
-}
-if(window.appStorageFolder){ saveAllToFolder(false).catch(console.error); }
+const old=data.find(x=>x.id===id);
+if(old)item.dataCadastro=old.dataCadastro||item.dataAtualizacao; else item.dataCadastro=item.dataAtualizacao;
+await saveLargeRecord(item);
+if(window.appStorageFolder){saveAllToFolder(false).catch(console.error)}
 if(window.NativeStorage) nativeSyncCurrentData();
-alert('Vistoria salva com sucesso, incluindo todos os dados e fotos!');
+alert('Vistoria salva com sucesso! Os dados ficam no armazenamento do navegador e as fotos em banco local de grande capacidade.');
 goHome();
-}catch(err){console.error(err);alert('Ocorreu um erro ao salvar a vistoria. Verifique os campos e tente novamente.')}
+}catch(err){
+ console.error(err);
+ alert('Não foi possível salvar. Verifique o espaço disponível no aparelho/navegador e tente novamente.');
+}
 });
 function statusBadge(s){return s==='Regular'?'badge-green':s==='Irregular'?'badge-red':'badge-yellow'}
 function renderSearchList(){let q=($('search-input').value||'').toLowerCase();let data=getStorage().filter(x=>JSON.stringify(x).toLowerCase().includes(q));$('search-results').innerHTML=data.length?data.map(card).join(''):'<p class="text-sm text-gray-500 text-center py-6">Nenhum registro encontrado.</p>'}
-function card(x){let fal=x.obitos?.map(o=>o.nome).filter(Boolean).join(', ')||x.nome||'Sem nome';return `<div class="border rounded-2xl p-4 bg-white"><div class="flex justify-between gap-2"><div><b>${esc(x.cemiterio)}</b><div class="text-sm text-gray-600">Quadra ${esc(x.quadra)} • Sepultura ${esc(x.lote)}</div><div class="text-sm mt-2">${esc(fal)}</div></div><span class="badge ${statusBadge(x.status)}">${esc(x.status)}</span></div><div class="flex gap-2 mt-3"><button onclick="editInspection('${x.id}')" class="px-3 py-2 btn-outline text-xs">Editar</button><button onclick="viewInspection('${x.id}')" class="px-3 py-2 bg-gray-100 rounded-xl text-xs font-semibold">Ver</button><button onclick="printInspection('${x.id}')" class="px-3 py-2 bg-teal-50 text-teal-800 rounded-xl text-xs font-semibold">🖨 PDF</button><button onclick="deleteInspection('${x.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-xs font-semibold">Excluir</button></div></div>`}
-function editInspection(id){let x=getStorage().find(a=>a.id===id);if(!x)return;resetForm();$('f-id').value=x.id;$('f-quadra').value=x.quadra;$('f-lote').value=x.lote;$('f-cemiterio').value=x.cemiterio;$('f-tipo').value=x.tipo;$('f-conservacao').value=x.conservacao;setNomesLapide(x.nomesLapide||[x.nome||'']);$('f-obs').value=x.observacoes;if($('f-status'))$('f-status').value=x.status||'Regular';$('f-responsavel-vistoria').value=x.responsavelVistoria||'';$('f-rgf-vistoria').value=x.rgfVistoria||'';$('f-data-vistoria').value=x.dataVistoria||'';document.querySelectorAll('input[name=status]').forEach(r=>r.checked=r.value===x.status);(x.obitos?.length?x.obitos:[{}]).forEach(addObitoBlock);photosList=x.fotos||[];renderPhotoGrid();showScreen('form')}
-function deleteInspection(id){if(!confirm('Excluir esta vistoria permanentemente?'))return;saveStorage(getStorage().filter(x=>x.id!==id));renderSearchList();renderReports()}
-function viewInspection(id){let x=getStorage().find(a=>a.id===id);if(!x)return;let fal=x.obitos?.map(o=>`• ${esc(o.nome||'Não informado')} — sepultamento: ${esc(o.sepultamento||'Não informado')} — declarante: ${esc(o.declarante?.nome||'Não informado')}`).join('<br>')||'Nenhum';let fotos=(x.fotos||[]).map(p=>`<img src="${p}" class="w-20 h-20 object-cover rounded-lg">`).join('');let nomes=(x.nomesLapide?.length?x.nomesLapide:[x.nome||'-']).map(n=>esc(n)).join('<br>');$('search-results').innerHTML=`<div class="border rounded-2xl p-4"><h3 class="font-bold text-teal-900 text-lg">${esc(x.cemiterio)} — Quadra ${esc(x.quadra)} / Sepultura ${esc(x.lote)}</h3><p class="text-sm mt-2"><b>Status:</b> ${esc(x.status)}<br><b>Tipo:</b> ${esc(x.tipo||'-')}<br><b>Conservação:</b> ${esc(x.conservacao||'-')}<br><b>Servidor:</b> ${esc(x.servidor)}</p><hr class="my-3"><b>Óbitos</b><p class="text-sm mt-2">${fal}</p><p class="text-sm mt-3"><b>Observações:</b> ${esc(x.observacoes||'-')}</p><div class="flex flex-wrap gap-2 mt-3">${fotos}</div><div class="flex flex-wrap gap-2 mt-4"><button onclick="printInspection('${x.id}')" class="px-4 py-2 btn-gradient text-sm">🖨 Imprimir / Salvar PDF</button><button onclick="renderSearchList()" class="px-4 py-2 btn-outline text-sm">Voltar aos resultados</button></div></div>`}
-
-function printInspection(id){
+function card(x){let fal=x.obitos?.map(o=>o.nome).filter(Boolean).join(', ')||x.nome||'Sem nome';return `<div class="border rounded-2xl p-4 bg-white"><div class="flex justify-between gap-2"><div><b>${esc(x.cemiterio)}</b><div class="text-sm text-gray-600">Quadra ${esc(x.quadra)} • Lote ${esc(x.lote)}</div><div class="text-sm mt-2">${esc(fal)}</div></div><span class="badge ${statusBadge(x.status)}">${esc(x.status)}</span></div><div class="flex gap-2 mt-3"><button onclick="editInspection('${x.id}')" class="px-3 py-2 btn-outline text-xs">Editar</button><button onclick="viewInspection('${x.id}')" class="px-3 py-2 bg-gray-100 rounded-xl text-xs font-semibold">Ver</button><button onclick="printInspection('${x.id}')" class="px-3 py-2 bg-teal-50 text-teal-800 rounded-xl text-xs font-semibold">🖨 PDF</button><button onclick="deleteInspection('${x.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-xs font-semibold">Excluir</button></div></div>`}
+async function editInspection(id){
+ const x=getStorage().find(a=>a.id===id);if(!x)return;
+ resetForm();$('f-id').value=x.id;$('f-quadra').value=x.quadra;$('f-lote').value=x.lote;$('f-cemiterio').value=x.cemiterio;$('f-tipo').value=x.tipo;$('f-conservacao').value=x.conservacao;
+ setNomesLapide(x.nomesLapide||[x.nome||'']);$('f-obs').value=x.observacoes||'';if($('f-status'))$('f-status').value=x.status||'Regular';
+ $('f-responsavel-vistoria').value=x.responsavelVistoria||'';$('f-rgf-vistoria').value=x.rgfVistoria||'';$('f-data-vistoria').value=x.dataVistoria||'';
+ (x.obitos?.length?x.obitos:[{}]).forEach(addObitoBlock);
+ photosList=await idbGetPhotos(x.id);renderPhotoGrid();showScreen('form');
+}
+async function deleteInspection(id){
+ if(!confirm('Excluir esta vistoria permanentemente?'))return;
+ const data=getStorage().filter(x=>x.id!==id);saveStorage(data);await idbDeletePhotos(id);
+ renderSearchList();renderReports();
+}
+async function viewInspection(id){
+ const x=getStorage().find(a=>a.id===id);if(!x)return;
+ const photos=await idbGetPhotos(id);
+ let fal=x.obitos?.map(o=>`• ${esc(o.nome||'Não informado')} — sepultamento: ${esc(o.sepultamento||'Não informado')} — declarante: ${esc(o.declarante?.nome||'Não informado')}`).join('<br>')||'Nenhum';
+ let fotos=photos.map(p=>`<img src="${p}" class="w-20 h-20 object-cover rounded-lg">`).join('');
+ $('search-results').innerHTML=`<div class="border rounded-2xl p-4"><h3 class="font-bold text-teal-900 text-lg">${esc(x.cemiterio)} — Quadra ${esc(x.quadra)} / Lote ${esc(x.lote)}</h3><p class="text-sm mt-2"><b>Status:</b> ${esc(x.status)}<br><b>Tipo:</b> ${esc(x.tipo||'-')}<br><b>Conservação:</b> ${esc(x.conservacao||'-')}</p><hr class="my-3"><b>Óbitos</b><p class="text-sm mt-2">${fal}</p><p class="text-sm mt-3"><b>Observações:</b> ${esc(x.observacoes||'-')}</p><div class="flex flex-wrap gap-2 mt-3">${fotos}</div><div class="flex flex-wrap gap-2 mt-4"><button onclick="printInspection('${x.id}')" class="px-4 py-2 btn-gradient text-sm">🖨 Imprimir / Salvar PDF</button><button onclick="renderSearchList()" class="px-4 py-2 btn-outline text-sm">Voltar aos resultados</button></div></div>`;
+}
+async function printInspection(id){
  const x=getStorage().find(a=>a.id===id);
  if(!x){alert('Vistoria não encontrada.');return}
  const escp=v=>esc(v??'-');
  const fmtDate=v=>v?new Date(v+'T00:00:00').toLocaleDateString('pt-BR'):'-';
- const photos=x.fotos||[];
+ const photos=await idbGetPhotos(id);
  const obitos=(x.obitos||[]).map((o,i)=>`
    <div class="obito">
     <h3>Óbito ${i+1}</h3>
@@ -303,7 +395,7 @@ function printInspection(id){
  setTimeout(()=>w.print(),500);
 }
 
-function renderReports(){let d=getStorage(),reg=d.filter(x=>x.status==='Regular').length,agu=d.filter(x=>x.status==='Regular').length,irr=d.filter(x=>x.status==='Irregular').length,ob=d.reduce((n,x)=>n+(x.obitos?.length||0),0),fo=d.reduce((n,x)=>n+(x.fotos?.length||0),0);$('reports-summary').innerHTML=`<div class="grid grid-cols-2 gap-3">${[['Vistorias',d.length],['Óbitos',ob],['Fotos',fo],['Irregulares',irr],['Regular',agu],['Regulares',reg]].map(a=>`<div class="p-4 bg-gray-50 rounded-2xl"><div class="text-2xl font-bold text-teal-800">${a[1]}</div><div class="text-xs text-gray-600 mt-1">${a[0]}</div></div>`).join('')}</div>`}
+function renderReports(){let d=getStorage(),reg=d.filter(x=>x.status==='Regular').length,agu=d.filter(x=>x.status==='Regular').length,irr=d.filter(x=>x.status==='Irregular').length,ob=d.reduce((n,x)=>n+(x.obitos?.length||0),0),fo=d.reduce((n,x)=>n+(x.photoCount||x.fotos?.length||0),0);$('reports-summary').innerHTML=`<div class="grid grid-cols-2 gap-3">${[['Vistorias',d.length],['Óbitos',ob],['Fotos',fo],['Irregulares',irr],['Regular',agu],['Regulares',reg]].map(a=>`<div class="p-4 bg-gray-50 rounded-2xl"><div class="text-2xl font-bold text-teal-800">${a[1]}</div><div class="text-xs text-gray-600 mt-1">${a[0]}</div></div>`).join('')}</div>`}
 
 let storageRootHandle = null;
 
@@ -408,8 +500,29 @@ async function compressPhotosList(){
   renderPhotoGrid();
 }
 
-function exportData(){let blob=new Blob([JSON.stringify(getStorage(),null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_sepulturas_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
-function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=async()=>{try{let d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;if(confirm(`Importar ${d.length} registros? Os dados atuais serão substituídos.`)){saveStorage(d);if(window.appStorageFolder) await saveAllToFolder(false);if(window.NativeStorage) nativeSyncCurrentData();alert('Backup importado com sucesso!');goHome()}}catch{alert('Arquivo de backup inválido.')}};r.readAsText(f);e.target.value=''}
+async function exportData(){
+ try{
+  const data=getStorage(), full=[];
+  for(const x of data)full.push({...x,fotos:await idbGetPhotos(x.id)});
+  const blob=new Blob([JSON.stringify(full)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_sepulturas_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);
+ }catch(e){alert('Não foi possível gerar o backup: '+e.message)}
+}
+async function importData(e){
+ let f=e.target.files[0];if(!f)return;
+ let r=new FileReader();
+ r.onload=async()=>{
+  try{
+   let d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;
+   if(confirm(`Importar ${d.length} registros? Os dados atuais serão substituídos.`)){
+    for(const x of d)await idbSavePhotos(x.id,x.fotos||[]);
+    saveStorage(d.map(metadataOnly));
+    alert('Backup importado com sucesso, incluindo as fotos!');goHome();
+   }
+  }catch(err){alert('Arquivo de backup inválido ou muito grande.')}
+ };
+ r.readAsText(f);e.target.value='';
+}
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
 <script>
